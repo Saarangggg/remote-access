@@ -72,7 +72,7 @@ if %errorLevel% neq 0 (
 echo.
 echo [+] Downloading Desktop Agent files (excluding mobile app)...
 set "REPO_URL=https://github.com/Saarangggg/remote-access.git"
-set "TARGET_DIR=remote-connect-agent"
+set "TARGET_DIR=C:\remote-connect-agent"
 
 if exist "%TARGET_DIR%" (
     echo [!] Target directory "%TARGET_DIR%" already exists.
@@ -94,7 +94,7 @@ if %errorLevel% neq 0 (
     exit /b 1
 )
 
-cd %TARGET_DIR%
+cd /d "%TARGET_DIR%"
 git sparse-checkout set desktop-agent
 git checkout
 if %errorLevel% neq 0 (
@@ -129,14 +129,43 @@ echo.
 echo [+] Registering Windows Registry Startup Keys and booting background service...
 call install.bat
 
+:: 7. Create Desktop Shortcuts for Start and Stop Bat files
+echo.
+echo [+] Creating Desktop shortcuts...
+set "SHORTCUT_VBS=%TEMP%\create_shortcuts.vbs"
+(
+echo Set oWS = CreateObject("WScript.Shell"^)
+echo sDesktop = oWS.SpecialFolders("Desktop"^)
+echo.
+echo ' Start Shortcut
+echo Set oLinkStart = oWS.CreateShortcut(sDesktop ^& "\RemoteConnect Start.lnk"^)
+echo oLinkStart.TargetPath = "%TARGET_DIR%\desktop-agent\start.bat"
+echo oLinkStart.WorkingDirectory = "%TARGET_DIR%\desktop-agent"
+echo oLinkStart.IconLocation = "shell32.dll,26"
+echo oLinkStart.Save
+echo.
+echo ' Stop Shortcut
+echo Set oLinkStop = oWS.CreateShortcut(sDesktop ^& "\RemoteConnect Stop.lnk"^)
+echo oLinkStop.TargetPath = "%TARGET_DIR%\desktop-agent\stop.bat"
+echo oLinkStop.WorkingDirectory = "%TARGET_DIR%\desktop-agent"
+echo oLinkStop.IconLocation = "shell32.dll,27"
+echo oLinkStop.Save
+) > "%SHORTCUT_VBS%"
+
+cscript /nologo "%SHORTCUT_VBS%"
+del "%SHORTCUT_VBS%"
+
 echo.
 echo ============================================================
 echo   RemoteConnect Agent installation complete!
+echo   Target Folder: %TARGET_DIR%
+echo.
+echo   [+] Desktop Shortcuts Created:
+echo       - "RemoteConnect Start" (Green Play icon representation)
+echo       - "RemoteConnect Stop" (Eject/Stop icon representation)
+echo.
 echo   The server is now running silently in the background on Port 9678.
 echo   It will boot automatically whenever Windows starts.
-echo.
-echo   To stop the server at any time, run stop.bat inside:
-echo   %CD%
 echo ============================================================
 echo.
 pause
