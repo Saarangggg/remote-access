@@ -9,7 +9,6 @@ import '../features/clipboard/clipboard_screen.dart';
 import '../features/keyboard/keyboard_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/pairing/pairing_screen.dart';
-import '../shared/providers/connection_provider.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -17,7 +16,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       // ── Main Shell with Bottom Nav ────────────────────────────────────────
       ShellRoute(
-        builder: (context, state, child) => MainShell(child: child),
+        builder: (context, state, child) => MainShell(
+          location: state.matchedLocation,
+          child: child,
+        ),
         routes: [
           GoRoute(path: '/dashboard', builder: (c, s) => const DashboardScreen()),
           GoRoute(path: '/screen', builder: (c, s) => const ScreenViewScreen()),
@@ -35,15 +37,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
 class MainShell extends ConsumerStatefulWidget {
   final Widget child;
-  const MainShell({super.key, required this.child});
+  final String location;
+  const MainShell({super.key, required this.child, required this.location});
 
   @override
   ConsumerState<MainShell> createState() => _MainShellState();
 }
 
 class _MainShellState extends ConsumerState<MainShell> {
-  int _currentIndex = 0;
-
   static const _routes = [
     '/dashboard',
     '/screen',
@@ -87,21 +88,24 @@ class _MainShellState extends ConsumerState<MainShell> {
   ];
 
   void _onDestinationSelected(int index) {
-    setState(() => _currentIndex = index);
     context.go(_routes[index]);
   }
 
   @override
   Widget build(BuildContext context) {
+    final location = widget.location;
+    final index = _routes.indexOf(location);
+    final currentIndex = index != -1 ? index : 0;
+
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final isScreenRoute = _currentIndex == 1; // '/screen' is index 1
+    final isScreenRoute = location == '/screen';
 
     return Scaffold(
       body: widget.child,
       bottomNavigationBar: (isLandscape && isScreenRoute)
           ? null
           : NavigationBar(
-              selectedIndex: _currentIndex,
+              selectedIndex: currentIndex,
               onDestinationSelected: _onDestinationSelected,
               destinations: _navItems,
               animationDuration: const Duration(milliseconds: 300),

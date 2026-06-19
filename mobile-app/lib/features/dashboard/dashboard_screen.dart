@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
 import '../../shared/providers/connection_provider.dart';
-import '../../shared/services/storage_service.dart';
 import '../../shared/widgets/status_badge.dart';
 import '../../shared/widgets/info_tile.dart';
 import '../../shared/widgets/gradient_card.dart';
@@ -180,16 +179,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             const SizedBox(height: 16),
             const Divider(color: Colors.white24, height: 1),
             const SizedBox(height: 12),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 _infoChip(Icons.wifi_rounded, ip),
-                const SizedBox(width: 8),
                 if (tunnelUrl.isNotEmpty)
-                  Expanded(
-                    child: _infoChip(
-                      Icons.cloud_rounded,
-                      Uri.tryParse(tunnelUrl)?.host ?? tunnelUrl,
-                    ),
+                  _infoChip(
+                    Icons.cloud_rounded,
+                    Uri.tryParse(tunnelUrl)?.host ?? tunnelUrl,
                   ),
               ],
             ),
@@ -254,10 +252,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Widget _buildStatsGrid() {
     final status = _deviceStatus!;
-    final freeMemMB = ((status['freeMemory'] as int? ?? 0) / 1024 / 1024).round();
-    final totalMemMB = ((status['totalMemory'] as int? ?? 1) / 1024 / 1024).round();
-    final uptimeH = ((status['uptime'] as int? ?? 0) / 3600).round();
-    final cpuCount = status['cpus'] as int? ?? 0;
+    final freeMemMB = (((status['freeMemory'] as num?)?.toDouble() ?? 0.0) / 1024 / 1024).round();
+    final totalMemMB = (((status['totalMemory'] as num?)?.toDouble() ?? 1.0) / 1024 / 1024).round();
+    final uptimeH = (((status['uptime'] as num?)?.toDouble() ?? 0.0) / 3600).round();
+    final cpuCount = (status['cpus'] as num?)?.toInt() ?? 0;
 
     return GridView.count(
       crossAxisCount: 2,

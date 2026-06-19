@@ -29,8 +29,8 @@ router.post('/pair', async (req, res) => {
 
   const { username, password, deviceId, deviceName, platform } = value;
 
-  const expectedUser = process.env.AGENT_USER || 'sarang';
-  const expectedPass = process.env.AGENT_PASSWORD || 'Sarang@123';
+  const expectedUser = process.env.AGENT_USER || 'admin';
+  const expectedPass = process.env.AGENT_PASSWORD || 'admin123';
 
   if (username !== expectedUser || password !== expectedPass) {
     logger.warn(`Failed login attempt from ${deviceName} (${deviceId}) - invalid credentials`);

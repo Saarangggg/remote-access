@@ -58,7 +58,7 @@ class SocketService {
     _socket = io.io(
       baseUrl,
       io.OptionBuilder()
-          .setTransports(['websocket'])
+          .setTransports(['websocket', 'polling'])
           .setAuth({'token': token})
           .setExtraHeaders({'Authorization': 'Bearer $token'})
           .enableAutoConnect()

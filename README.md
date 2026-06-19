@@ -1,50 +1,61 @@
-# RemoteConnect — Cross-Platform Remote Connectivity Platform
+# RemoteConnect 🖥️📱
 
-A production-ready remote desktop, file manager, input controller, and clipboard sync system built with **Node.js** (Windows Background Agent) and **Flutter** (Mobile App client). Connected securely via **Cloudflare Tunnels**.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Flutter](https://img.shields.io/badge/Flutter-v3.0+-blue.svg)](https://flutter.dev)
+[![Node.js](https://img.shields.io/badge/Node.js-v18+-green.svg)](https://nodejs.org)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Android-lightgrey.svg)](#)
 
----
+RemoteConnect is a robust, production-ready, open-source remote desktop, background input injector, sandboxed file manager, and bidirectional clipboard synchronization suite. It consists of a **Node.js Desktop Background Agent** for Windows and a beautiful **Flutter Mobile Client** for Android.
 
-## Features
-
-1. **Device Pairing**: Enter a 6-digit pin code shown on the desktop or scan the QR code to pair over Cloudflare Tunnel (HTTPS).
-2. **Real-time Screen Mirroring**: Custom-tuned JPEG-over-WebSocket streaming pipeline with configurable quality (Low/Med/High) and frame rates (15/30/60 FPS).
-3. **Remote Inputs**:
-   - Single tap → Left click.
-   - Double tap → Double click.
-   - Long press → Right click.
-   - Drag/Pan → Mouse movement & click drag.
-   - Scale pinch → Two-finger scroll wheel emulation.
-   - Desktop Keyboard control with modifier keys (Ctrl, Alt, Shift, Win/Super) and Function keys (F1-F12).
-4. **Encrypted File Manager**:
-   - Safe sandbox roots: Desktop, Downloads, Documents, Pictures, Videos.
-   - Upload & download files with linear progress tracking.
-   - Directory navigation, search, create folder, move, rename, delete.
-5. **Real-time Clipboard Sync**: Sync clipboard bidirectionally. Options for manual push/pull or background auto-sync.
-6. **Windows Agent Service**: Installs silently as a Windows background agent starting automatically on login.
+The system features a **Dual-User Coexistence (Independent Seat Mode)**, allowing a remote mobile user to fully interact with applications on a secondary virtual display without taking focus away from the primary user's mouse and keyboard on Monitor 1.
 
 ---
 
-## Project Structure
+## Key Features 🚀
+
+- **Dual-User Coexistence (True Independent Seat)**:
+  - Injects mouse inputs (`click`, `move`, `scroll`, `drag`) and keyboard typing directly into specific application window queues (`HWND`) via a background C# Win32 compiler bridge.
+  - Allows two users to operate the same PC simultaneously without cursor hijacking or focus-stealing.
+  - Multi-monitor coordinate translation propagates accurately across mixed-DPI screen layouts (e.g. 125% scale on Monitor 1, 100% on Monitor 2).
+- **Fast Screen Streaming**:
+  - Encoded JPEG-over-WebSocket mirroring pipeline.
+  - Configure performance dynamically: low, medium, or high quality, and target frame rates of 15, 30, or 60 FPS.
+  - Fast monitor switching support for multi-display layouts.
+- **Remote Input Controls**:
+  - Native OTG hardware mouse passthrough (move, drag, left/right/middle click, and scrolling) directly to the desktop agent.
+  - Touchscreen controls: single-tap (left click), double-tap (double click), long-press (right click), and double-finger drag (scroll wheel emulation).
+  - Full keyboard controller with modifier toggles (`Ctrl`, `Alt`, `Shift`, `Win`) and arrow navigation D-Pad.
+- **Sandboxed File Explorer**:
+  - Browse home folders (Desktop, Downloads, Documents, Pictures, Videos) via interactive chips.
+  - Download, upload, rename, move, and delete files with dynamic transfer progress bars.
+- **Bidirectional Clipboard Synchronizer**:
+  - Sync clips instantly. Turn on Auto-Sync to push/pull clipboard text in the background.
+- **Silent Windows Autostart**:
+  - Built-in registry installer that registers the agent as a silent Windows background startup process.
+
+---
+
+## Project Structure 📁
 
 ```
 remote/
+├── LICENSE                 # MIT License file
+├── README.md               # SEO-optimized documentation
 ├── desktop-agent/         # Node.js Desktop Background Agent
 │   ├── src/
 │   │   ├── auth/          # JWT auth & pairing database
 │   │   ├── clipboard/     # Clipboard polling & sync
 │   │   ├── device/        # Device info & monitor config
 │   │   ├── files/         # File sandbox REST API
-│   │   ├── input/         # Keyboard & mouse robot inputs
+│   │   ├── input/         # Keyboard & mouse robot inputs (C# bridge compiler)
 │   │   ├── screen/        # Multi-monitor screenshot encoder
 │   │   ├── tunnel/        # Cloudflared subprocess spawn manager
-│   │   ├── utils/         # Config & Winston Logger
 │   │   └── server.js      # Main Express + Socket.IO Server
 │   ├── install.bat        # Add to Windows Registry Run keys
-│   └── uninstall.bat      # Remove from Windows startup
-│
+│   └── stop.bat           # Safely terminate agent process
 └── mobile-app/            # Flutter (Material 3) Mobile Client
     ├── lib/
-    │   ├── core/          # Theme, Navigation Shell
+    │   ├── core/          # Theme, Navigation Shell, Router
     │   ├── features/      # Screens (Dashboard, Screen, Files, Keyboard, etc.)
     │   └── shared/        # API Clients, Socket manager, Storage service
     └── pubspec.yaml       # App dependencies configuration
@@ -52,44 +63,88 @@ remote/
 
 ---
 
-## Getting Started
+## Desktop Agent Setup (Windows) 💻
 
 ### Prerequisites
 - Node.js (>= 18.0.0)
-- Flutter SDK (>= 3.3.0)
-- Cloudflared installed in system path (optional, if you want automatic public Cloudflare tunneling)
+- .NET Framework (csc.exe compiler pre-installed on Windows for background C# injection)
 
-### Setup Desktop Agent
-1. Open terminal in `desktop-agent` directory:
+### Setup & Run
+1. Navigate to the `desktop-agent` directory:
    ```bash
    cd desktop-agent
    npm install
    ```
-2. Copy `.env.example` to `.env` and configure port or paths.
+2. Initialize and configure the environment variables:
+   - Run the automated setup script to create `.env` (if not present) and populate it with strong cryptographic JWT secrets:
+     ```bash
+     node generate-secrets.js
+     ```
+   - Open the newly generated `.env` file and set your secure agent credentials and optional custom URL:
+     ```env
+     AGENT_USER=admin
+     AGENT_PASSWORD=your_secure_password
+     CUSTOM_URL=https://your-custom-tunnel.com
+     ```
 3. Start the agent:
    ```bash
    npm start
    ```
-4. A pairing QR code and 6-digit pin code will be printed in the terminal.
 
-#### Autostart with Windows
-To configure the agent to run silently in the background on startup, run the installer:
-1. Double-click `install.bat` or run it from an Administrator command prompt.
-2. The script registers the startup key in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
-
-To disable autostart:
-1. Double-click `uninstall.bat`.
+### Autostart on Boot
+- Double-click **`install.bat`** (or run it as Administrator). This registers the startup key under registry path `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, which silently boots the agent hidden in the background using VBScript on system start.
+- To terminate the server, run **`stop.bat`**.
 
 ---
 
-## Setup Mobile App
-1. Go to `mobile-app` directory:
+## Mobile App Setup (Flutter Client) 📱
+
+### Prerequisites
+- Flutter SDK (>= 3.0.0)
+- Android SDK / Device (USB Debugging enabled)
+
+### Build-Time Environment Configuration
+For open-source deployment, default credentials and domains are configured via environment compile-time definitions rather than being hardcoded in the source:
+
+```bash
+flutter run --dart-define=DEFAULT_URL=https://your-custom-tunnel-url.site \
+            --dart-define=DEFAULT_USER=admin \
+            --dart-define=DEFAULT_PASSWORD=your_password
+```
+
+If these parameters are omitted, the app defaults to safe local development values:
+- URL: `http://192.168.1.100:9678`
+- User: `admin`
+- Password: `admin123`
+
+### Compile Release APK
+To build the release Android package with desugaring libraries enabled:
+```bash
+cd mobile-app
+flutter build apk --release
+```
+The compiled APK will be available at:
+`mobile-app/build/app/outputs/flutter-apk/app-release.apk`
+
+---
+
+## True Dual-User Independent Seat (Secondary Monitor Setup) 🖥️🖥️
+
+To work on Monitor 2 from your mobile client while someone else uses Monitor 1 locally:
+
+1. **Virtual Display Driver (VDD)**: Install the Virtual Display Driver (VDD) on Windows:
    ```bash
-   cd mobile-app
-   flutter pub get
+   winget install VirtualDrivers.Virtual-Display-Driver
    ```
-2. Run the application on your Android/iOS device:
-   ```bash
-   flutter run
-   ```
-3. Scan the QR code displayed on the desktop command line or enter the trycloudflare URL and pin code to pair!
+2. **Activate Monitor 2**: Launch the `VDD Control.exe` tool with admin privileges to create a virtual Monitor 2.
+3. **Connect Mobile Client**:
+   - Log in and navigate to the **Screen** tab.
+   - Tap the **Switch Monitor** icon in the App Bar and select **Monitor 2**.
+   - Tap the **Coexist Mode** button to cycle to **Independent Seat Mode**.
+4. **Result**: Your taps, typing, and mouse scrolls are sent through `PostMessage` directly to background window message queues on Monitor 2. The host PC's primary cursor remains completely uninterrupted on Monitor 1!
+
+---
+
+## License 📄
+
+This project is licensed under the terms of the [MIT License](LICENSE).

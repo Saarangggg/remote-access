@@ -514,7 +514,7 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
         subtitle: isDir
             ? null
             : Text(
-                _formatBytes(item['size'] as int? ?? 0),
+                _formatBytes((item['size'] as num?)?.toInt() ?? 0),
                 style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
               ),
         onTap: () {

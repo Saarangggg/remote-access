@@ -22,6 +22,7 @@ const { startClipboardMonitor } = require('./clipboard/clipboardManager');
 const tunnelManager = require('./tunnel/tunnelManager');
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy (e.g. Cloudflare, Nginx)
 const httpServer = http.createServer(app);
 
 // ─── Middleware ────────────────────────────────────────────────────────────────

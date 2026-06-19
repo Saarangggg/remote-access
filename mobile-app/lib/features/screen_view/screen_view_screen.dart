@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,7 +40,6 @@ class _ScreenViewScreenState extends ConsumerState<ScreenViewScreen> {
   // Direct typing and screenshot support
   final _textFocusNode = FocusNode();
   final _textController = TextEditingController();
-  bool _absoluteTouchMode = true;
 
   // Modifier and collapsed state controls
   bool _ctrlActive = false;
@@ -535,39 +535,6 @@ class _ScreenViewScreenState extends ConsumerState<ScreenViewScreen> {
               return list;
             },
           ),
-          // Screenshot button
-          IconButton(
-            icon: const Icon(Icons.screenshot_rounded, color: AppTheme.textSecondary),
-            tooltip: 'Take Screenshot',
-            onPressed: _isStreaming ? _takeScreenshot : null,
-          ),
-          // Touch mode toggle
-          IconButton(
-            icon: Icon(
-              _absoluteTouchMode ? Icons.touch_app_rounded : Icons.mouse_rounded,
-              color: AppTheme.primary,
-            ),
-            tooltip: _absoluteTouchMode ? 'Touchscreen Mode' : 'Trackpad Mode',
-            onPressed: () {
-              setState(() => _absoluteTouchMode = !_absoluteTouchMode);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(_absoluteTouchMode
-                      ? 'Switched to Touchscreen Mode'
-                      : 'Switched to Trackpad Mode'),
-                  duration: const Duration(seconds: 1),
-                ),
-              );
-            },
-          ),
-          // Soft keyboard trigger
-          IconButton(
-            icon: const Icon(Icons.keyboard_alt_rounded, color: AppTheme.textSecondary),
-            tooltip: 'Open Input Keyboard',
-            onPressed: () {
-              _textFocusNode.requestFocus();
-            },
-          ),
           // Quality picker
           PopupMenuButton<String>(
             icon: const Icon(Icons.hd_rounded, color: AppTheme.textSecondary),
@@ -671,7 +638,7 @@ class _ScreenViewScreenState extends ConsumerState<ScreenViewScreen> {
         final size = Size(constraints.maxWidth, constraints.maxHeight);
 
         return MouseRegion(
-          cursor: SystemMouseCursors.none,
+          cursor: SystemMouseCursors.basic,
           child: Listener(
             onPointerDown: (event) {
               _lastPointerKind = event.kind;
@@ -851,16 +818,6 @@ class _ScreenViewScreenState extends ConsumerState<ScreenViewScreen> {
                           icon: Icons.screenshot_rounded,
                           tooltip: 'Screenshot',
                           onPressed: _takeScreenshot,
-                        ),
-                        const SizedBox(width: 12),
-                        // Touch mode button
-                        _buildQuickActionBtn(
-                          icon: _absoluteTouchMode ? Icons.touch_app_rounded : Icons.mouse_rounded,
-                          tooltip: _absoluteTouchMode ? 'Touch Mode' : 'Trackpad Mode',
-                          onPressed: () {
-                            setState(() => _absoluteTouchMode = !_absoluteTouchMode);
-                          },
-                          color: AppTheme.primary,
                         ),
                         const SizedBox(width: 12),
                         // App launcher button
@@ -1268,14 +1225,6 @@ class _ScreenViewScreenState extends ConsumerState<ScreenViewScreen> {
                         onTap: () {
                           Navigator.pop(context);
                           _takeScreenshot();
-                        },
-                      ),
-                      _landscapeOption(
-                        icon: _absoluteTouchMode ? Icons.touch_app_rounded : Icons.mouse_rounded,
-                        label: _absoluteTouchMode ? 'Touch' : 'Trackpad',
-                        onTap: () {
-                          Navigator.pop(context);
-                          setState(() => _absoluteTouchMode = !_absoluteTouchMode);
                         },
                       ),
                       _landscapeOption(

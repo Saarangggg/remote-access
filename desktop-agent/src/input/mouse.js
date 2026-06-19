@@ -29,6 +29,79 @@ async function getRobot() {
 let lastFinalX = 0;
 let lastFinalY = 0;
 
+function getLogicalDisplays(displays) {
+  // Initialize all logical positions as null
+  displays.forEach(d => {
+    d.logicalLeft = null;
+    d.logicalTop = null;
+    d.dpiScale = d.dpiScale || 1.0;
+  });
+
+  // Find the primary monitor (left: 0, top: 0)
+  const primary = displays.find(d => d.left === 0 && d.top === 0) || displays[0];
+  if (primary) {
+    primary.logicalLeft = 0;
+    primary.logicalTop = 0;
+  }
+
+  // Iteratively resolve other monitors
+  let resolvedAny = true;
+  while (resolvedAny) {
+    resolvedAny = false;
+    for (const d of displays) {
+      if (d.logicalLeft !== null) continue; // Already resolved
+
+      // Try to find a resolved monitor adjacent to d
+      for (const adj of displays) {
+        if (adj.logicalLeft === null) continue; // Must be resolved
+
+        // Check if adj is to the left of d (d is to the right of adj)
+        if (Math.abs(adj.left + adj.width - d.left) < 15 && 
+            d.top < adj.top + adj.height && d.top + d.height > adj.top) {
+          d.logicalLeft = adj.logicalLeft + Math.round(adj.width / adj.dpiScale);
+          d.logicalTop = adj.logicalTop + Math.round((d.top - adj.top) / adj.dpiScale);
+          resolvedAny = true;
+          break;
+        }
+        // Check if adj is to the right of d (d is to the left of adj)
+        if (Math.abs(d.left + d.width - adj.left) < 15 &&
+            d.top < adj.top + adj.height && d.top + d.height > adj.top) {
+          d.logicalLeft = adj.logicalLeft - Math.round(d.width / d.dpiScale);
+          d.logicalTop = adj.logicalTop + Math.round((d.top - adj.top) / adj.dpiScale);
+          resolvedAny = true;
+          break;
+        }
+        // Check if adj is above d (d is below adj)
+        if (Math.abs(adj.top + adj.height - d.top) < 15 &&
+            d.left < adj.left + adj.width && d.left + d.width > adj.left) {
+          d.logicalTop = adj.logicalTop + Math.round(adj.height / adj.dpiScale);
+          d.logicalLeft = adj.logicalLeft + Math.round((d.left - adj.left) / adj.dpiScale);
+          resolvedAny = true;
+          break;
+        }
+        // Check if adj is below d (d is above adj)
+        if (Math.abs(d.top + d.height - adj.top) < 15 &&
+            d.left < adj.left + adj.width && d.left + d.width > adj.left) {
+          d.logicalTop = adj.logicalTop - Math.round(d.height / d.dpiScale);
+          d.logicalLeft = adj.logicalLeft + Math.round((d.left - adj.left) / adj.dpiScale);
+          resolvedAny = true;
+          break;
+        }
+      }
+    }
+  }
+
+  // Fallback for any unresolved monitors (e.g. detached/non-touching)
+  displays.forEach(d => {
+    if (d.logicalLeft === null) {
+      d.logicalLeft = Math.round(d.left / d.dpiScale);
+      d.logicalTop = Math.round(d.top / d.dpiScale);
+    }
+  });
+
+  return displays;
+}
+
 /**
  * Handle incoming mouse event from phone
  * data: { type, x, y, button, screenWidth, screenHeight }
@@ -50,15 +123,12 @@ async function handleMouseEvent(data) {
       const screenshot = require('screenshot-desktop');
       const displays = await screenshot.listDisplays();
       if (displays && displays.length > monitorIndex) {
-        const d = displays[monitorIndex];
-        // Calculate absolute physical coordinate
-        const physX = d.left + Math.round(x);
-        const physY = d.top + Math.round(y);
+        const logicalDisplays = getLogicalDisplays(displays);
+        const d = logicalDisplays[monitorIndex];
         
-        // Scale by target monitor DPI scale to get logical coordinate
-        const scale = d.dpiScale || 1.0;
-        finalX = Math.round(physX / scale);
-        finalY = Math.round(physY / scale);
+        // Calculate absolute logical coordinates using logical offsets
+        finalX = d.logicalLeft + Math.round(x / d.dpiScale);
+        finalY = d.logicalTop + Math.round(y / d.dpiScale);
       } else {
         finalX = Math.round(x);
         finalY = Math.round(y);
@@ -100,7 +170,7 @@ async function handleMouseEvent(data) {
 }
 
 async function _handleNutJs(r, type, x, y, button, scrollDelta, coexistMode) {
-  const { mouse, straightTo, Point, Button } = r;
+  const { mouse, Point, Button } = r;
 
   const absX = Math.round(x);
   const absY = Math.round(y);
@@ -119,22 +189,22 @@ async function _handleNutJs(r, type, x, y, button, scrollDelta, coexistMode) {
 
   switch (type) {
     case 'move':
-      await mouse.move(straightTo(new Point(absX, absY)));
+      await mouse.setPosition(new Point(absX, absY));
       break;
     case 'click':
-      await mouse.move(straightTo(new Point(absX, absY)));
+      await mouse.setPosition(new Point(absX, absY));
       await mouse.click(btn);
       break;
     case 'dblclick':
-      await mouse.move(straightTo(new Point(absX, absY)));
+      await mouse.setPosition(new Point(absX, absY));
       await mouse.doubleClick(btn);
       break;
     case 'rclick':
-      await mouse.move(straightTo(new Point(absX, absY)));
+      await mouse.setPosition(new Point(absX, absY));
       await mouse.click(Button.RIGHT);
       break;
     case 'down':
-      await mouse.move(straightTo(new Point(absX, absY)));
+      await mouse.setPosition(new Point(absX, absY));
       await mouse.pressButton(btn);
       break;
     case 'up':
@@ -153,7 +223,7 @@ async function _handleNutJs(r, type, x, y, button, scrollDelta, coexistMode) {
   // Restore cursor position
   if (coexistMode && prevPoint) {
     try {
-      await mouse.move(straightTo(prevPoint));
+      await mouse.setPosition(prevPoint);
     } catch {}
   }
 }
