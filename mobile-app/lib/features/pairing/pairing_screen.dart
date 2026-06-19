@@ -19,15 +19,15 @@ class PairingScreen extends ConsumerStatefulWidget {
 class _PairingScreenState extends ConsumerState<PairingScreen> {
   final _formKey = GlobalKey<FormState>();
   final _urlController = TextEditingController(
-    text: const String.fromEnvironment('DEFAULT_URL',  defaultValue: 'https://desktop.sarang-space.site' ),
+    text: const String.fromEnvironment('DEFAULT_URL' ),
   );
   final _usernameController = TextEditingController(
-    text: const String.fromEnvironment('DEFAULT_USER', defaultValue: 'Sarang'),
+    text: const String.fromEnvironment('DEFAULT_USER'),
   );
   final _passwordController = TextEditingController(
-    text: const String.fromEnvironment('DEFAULT_PASSWORD', defaultValue: 'Sarang@123'),
+    text: const String.fromEnvironment('DEFAULT_PASSWORD'),
   );
-  final _nameController = TextEditingController(text: 'My Phone');
+  final _nameController = TextEditingController(text:);
   bool _isLoading = false;
   bool _obscurePassword = true;
 
