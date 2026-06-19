@@ -13,6 +13,7 @@ mobile-app/build/
 mobile-app/.dart_tool/
 .gradle/
 mobile-app/android/.gradle/
+*.apk
 
 # Generated plugins files
 .flutter-plugins
