@@ -46,20 +46,27 @@ async function handleMouseEvent(data) {
   let finalY = lastFinalY;
 
   if (x !== undefined && y !== undefined) {
-    finalX = Math.round(x);
-    finalY = Math.round(y);
     try {
       const screenshot = require('screenshot-desktop');
       const displays = await screenshot.listDisplays();
       if (displays && displays.length > monitorIndex) {
         const d = displays[monitorIndex];
-        const normalizedX = x / 1920;
-        const normalizedY = y / 1080;
-        finalX = d.left + Math.round(normalizedX * d.width);
-        finalY = d.top + Math.round(normalizedY * d.height);
+        // Calculate absolute physical coordinate
+        const physX = d.left + Math.round(x);
+        const physY = d.top + Math.round(y);
+        
+        // Scale by target monitor DPI scale to get logical coordinate
+        const scale = d.dpiScale || 1.0;
+        finalX = Math.round(physX / scale);
+        finalY = Math.round(physY / scale);
+      } else {
+        finalX = Math.round(x);
+        finalY = Math.round(y);
       }
     } catch (err) {
       logger.error('Failed to map coordinates for multi-monitor:', err.message);
+      finalX = Math.round(x);
+      finalY = Math.round(y);
     }
     lastFinalX = finalX;
     lastFinalY = finalY;

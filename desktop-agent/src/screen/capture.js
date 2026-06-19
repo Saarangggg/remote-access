@@ -46,9 +46,18 @@ async function captureScreen(quality = 'medium', monitorIndex = 0) {
 async function getDisplays() {
   try {
     const displays = await screenshot.listDisplays();
-    return displays.map((d, i) => ({ index: i, id: d.id, name: d.name || `Monitor ${i + 1}` }));
+    return displays.map((d, i) => ({
+      index: i,
+      id: d.id,
+      name: d.name || `Monitor ${i + 1}`,
+      width: d.width,
+      height: d.height,
+      left: d.left,
+      top: d.top,
+      dpiScale: d.dpiScale || 1.0
+    }));
   } catch {
-    return [{ index: 0, id: 0, name: 'Primary Monitor' }];
+    return [{ index: 0, id: 0, name: 'Primary Monitor', width: 1920, height: 1080, left: 0, top: 0, dpiScale: 1.0 }];
   }
 }
 
