@@ -4,10 +4,7 @@ SET "AGENT_DIR=%~dp0"
 IF EXIST "%AGENT_DIR%src\server.js" GOTO FOUND
 
 REM Try other common locations
-SET "AGENT_DIR=C:\remote\desktop-agent\"
-IF EXIST "%AGENT_DIR%src\server.js" GOTO FOUND
-
-SET "AGENT_DIR=C:\Users\Asus\Downloads\remote\desktop-agent\"
+SET "AGENT_DIR=C:\remote-access\desktop-agent\"
 IF EXIST "%AGENT_DIR%src\server.js" GOTO FOUND
 
 REM Read from startup registry using pure batch without quotes inside loop
