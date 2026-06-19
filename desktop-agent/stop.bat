@@ -10,9 +10,8 @@ IF EXIST "%AGENT_DIR%src\server.js" GOTO FOUND
 SET "AGENT_DIR=C:\Users\Asus\Downloads\remote\desktop-agent\"
 IF EXIST "%AGENT_DIR%src\server.js" GOTO FOUND
 
-REM Read from startup registry using pure batch
-SET "STARTUP_KEY=HKCU\Software\Microsoft\Windows\CurrentVersion\Run"
-for /f "tokens=2,*" %%A in ('reg query "%STARTUP_KEY%" /v RemoteConnectAgent 2^>nul') do (
+REM Read from startup registry using pure batch without quotes inside loop
+for /f "tokens=2,*" %%A in ('reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v RemoteConnectAgent 2^>nul') do (
     set "REG_VAL=%%B"
 )
 if defined REG_VAL (
