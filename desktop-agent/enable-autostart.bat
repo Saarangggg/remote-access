@@ -50,3 +50,4 @@ echo   To stop the server at any time, run: stop.bat
 echo ============================================================
 echo.
 pause
+
