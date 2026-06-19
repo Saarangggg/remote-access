@@ -52,6 +52,7 @@ class _ScreenViewScreenState extends ConsumerState<ScreenViewScreen> {
   int _monitorIndex = 0;
   String _coexistMode = 'off'; // 'off', 'restore', 'independent'
   List<dynamic> _displays = [];
+  PointerDeviceKind _lastPointerKind = PointerDeviceKind.touch;
 
   @override
   void initState() {
@@ -669,57 +670,132 @@ class _ScreenViewScreenState extends ConsumerState<ScreenViewScreen> {
       builder: (context, constraints) {
         final size = Size(constraints.maxWidth, constraints.maxHeight);
 
-        return GestureDetector(
-          onTapDown: (d) => _sendMouse(d.localPosition, size, 'click'),
-          onDoubleTapDown: (d) => _sendMouse(d.localPosition, size, 'dblclick'),
-          onLongPressStart: (d) => _sendMouse(d.localPosition, size, 'rclick'),
-          onScaleStart: (d) {
-            _lastDragPosition = d.localFocalPoint;
-            _sendMouseRaw(d.localFocalPoint, size, 'down');
-          },
-          onScaleUpdate: (d) {
-            if (d.pointerCount == 1) {
-              _sendMouseRaw(d.localFocalPoint, size, 'move');
-              _lastDragPosition = d.localFocalPoint;
-            } else if (d.pointerCount == 2) {
-              final socket = ref.read(socketServiceProvider);
-              socket.sendMouseEvent({
-                'type': 'scroll',
-                'scrollDelta': {
-                  'dx': 0,
-                  'dy': d.focalPointDelta.dy > 0 ? 3 : -3,
-                },
-              });
-            }
-          },
-          onScaleEnd: (_) {
-            if (_lastDragPosition != null) {
-              _sendMouseRaw(_lastDragPosition!, size, 'up');
-            }
-            _lastDragPosition = null;
-          },
-          child: Container(
-            color: Colors.black,
-            child: Center(
-              child: _frameBytes == null
-                  ? Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const CircularProgressIndicator(color: AppTheme.primary),
-                        const SizedBox(height: 16),
-                        Text(
-                          _isStreaming ? 'Waiting for frames...' : 'Press play to start',
-                          style: const TextStyle(color: AppTheme.textSecondary),
+        return MouseRegion(
+          cursor: SystemMouseCursors.none,
+          child: Listener(
+            onPointerDown: (event) {
+              _lastPointerKind = event.kind;
+              if (event.kind == PointerDeviceKind.mouse) {
+                final buttons = event.buttons;
+                String btn = 'left';
+                if ((buttons & 2) != 0) {
+                  btn = 'right';
+                } else if ((buttons & 4) != 0) {
+                  btn = 'middle';
+                }
+                _sendMouseRawButton(event.localPosition, size, 'down', btn);
+              }
+            },
+            onPointerMove: (event) {
+              _lastPointerKind = event.kind;
+              if (event.kind == PointerDeviceKind.mouse) {
+                _sendMouseRaw(event.localPosition, size, 'move');
+              }
+            },
+            onPointerHover: (event) {
+              _lastPointerKind = event.kind;
+              if (event.kind == PointerDeviceKind.mouse) {
+                _sendMouseRaw(event.localPosition, size, 'move');
+              }
+            },
+            onPointerUp: (event) {
+              _lastPointerKind = event.kind;
+              if (event.kind == PointerDeviceKind.mouse) {
+                final buttons = event.buttons;
+                String btn = 'left';
+                if ((buttons & 2) != 0) {
+                  btn = 'right';
+                } else if ((buttons & 4) != 0) {
+                  btn = 'middle';
+                }
+                _sendMouseRawButton(event.localPosition, size, 'up', btn);
+              }
+            },
+            onPointerSignal: (event) {
+              if (event is PointerScrollEvent && event.kind == PointerDeviceKind.mouse) {
+                final socket = ref.read(socketServiceProvider);
+                socket.sendMouseEvent({
+                  'type': 'scroll',
+                  'scrollDelta': {
+                    'dx': event.scrollDelta.dx > 0 ? 1 : (event.scrollDelta.dx < 0 ? -1 : 0),
+                    'dy': event.scrollDelta.dy > 0 ? 3 : (event.scrollDelta.dy < 0 ? -3 : 0),
+                  },
+                  'monitorIndex': _monitorIndex,
+                  'coexistMode': _coexistMode,
+                });
+              }
+            },
+            child: GestureDetector(
+              onTapDown: (d) {
+                if (_lastPointerKind != PointerDeviceKind.mouse) {
+                  _sendMouse(d.localPosition, size, 'click');
+                }
+              },
+              onDoubleTapDown: (d) {
+                if (_lastPointerKind != PointerDeviceKind.mouse) {
+                  _sendMouse(d.localPosition, size, 'dblclick');
+                }
+              },
+              onLongPressStart: (d) {
+                if (_lastPointerKind != PointerDeviceKind.mouse) {
+                  _sendMouse(d.localPosition, size, 'rclick');
+                }
+              },
+              onScaleStart: (d) {
+                if (_lastPointerKind != PointerDeviceKind.mouse) {
+                  _lastDragPosition = d.localFocalPoint;
+                  _sendMouseRaw(d.localFocalPoint, size, 'down');
+                }
+              },
+              onScaleUpdate: (d) {
+                if (_lastPointerKind != PointerDeviceKind.mouse) {
+                  if (d.pointerCount == 1) {
+                     _sendMouseRaw(d.localFocalPoint, size, 'move');
+                     _lastDragPosition = d.localFocalPoint;
+                  } else if (d.pointerCount == 2) {
+                    final socket = ref.read(socketServiceProvider);
+                    socket.sendMouseEvent({
+                      'type': 'scroll',
+                      'scrollDelta': {
+                        'dx': 0,
+                        'dy': d.focalPointDelta.dy > 0 ? 3 : -3,
+                      },
+                    });
+                  }
+                }
+              },
+              onScaleEnd: (_) {
+                if (_lastPointerKind != PointerDeviceKind.mouse) {
+                  if (_lastDragPosition != null) {
+                    _sendMouseRaw(_lastDragPosition!, size, 'up');
+                  }
+                  _lastDragPosition = null;
+                }
+              },
+              child: Container(
+                color: Colors.black,
+                child: Center(
+                  child: _frameBytes == null
+                      ? Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const CircularProgressIndicator(color: AppTheme.primary),
+                            const SizedBox(height: 16),
+                            Text(
+                              _isStreaming ? 'Waiting for frames...' : 'Press play to start',
+                              style: const TextStyle(color: AppTheme.textSecondary),
+                            ),
+                          ],
+                        )
+                      : Image.memory(
+                          _frameBytes!,
+                          fit: BoxFit.contain,
+                          width: size.width,
+                          height: size.height,
+                          gaplessPlayback: true,
                         ),
-                      ],
-                    )
-                  : Image.memory(
-                      _frameBytes!,
-                      fit: BoxFit.contain,
-                      width: size.width,
-                      height: size.height,
-                      gaplessPlayback: true, // Prevents flicker between frames
-                    ),
+                ),
+              ),
             ),
           ),
         );
@@ -1333,6 +1409,18 @@ class _ScreenViewScreenState extends ConsumerState<ScreenViewScreen> {
       'type': type,
       ...desktop,
       'button': 'left',
+      'monitorIndex': _monitorIndex,
+      'coexistMode': _coexistMode,
+    });
+  }
+
+  void _sendMouseRawButton(Offset pos, Size size, String type, String button) {
+    final desktop = _touchToDesktop(pos, size);
+    final socket = ref.read(socketServiceProvider);
+    socket.sendMouseEvent({
+      'type': type,
+      ...desktop,
+      'button': button,
       'monitorIndex': _monitorIndex,
       'coexistMode': _coexistMode,
     });
