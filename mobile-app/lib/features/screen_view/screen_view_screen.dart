@@ -37,6 +37,14 @@ class _ScreenViewScreenState extends ConsumerState<ScreenViewScreen> {
   // Touch drag state
   Offset? _lastDragPosition;
 
+  // Touch cursor visual overlay
+  Offset? _touchCursorPos;
+  bool _isTouchActive = false;
+  bool _showTapRipple = false;
+  Offset? _tapRipplePos;
+  Timer? _touchHideTimer;
+  Timer? _rippleTimer;
+
   // Direct typing and screenshot support
   final _textFocusNode = FocusNode();
   final _textController = TextEditingController();
@@ -439,12 +447,40 @@ class _ScreenViewScreenState extends ConsumerState<ScreenViewScreen> {
     }
   }
 
+  void _showTouchAt(Offset pos) {
+    _touchHideTimer?.cancel();
+    setState(() {
+      _touchCursorPos = pos;
+      _isTouchActive = true;
+    });
+  }
+
+  void _hideTouchCursor({Duration delay = const Duration(milliseconds: 120)}) {
+    _touchHideTimer?.cancel();
+    _touchHideTimer = Timer(delay, () {
+      if (mounted) setState(() => _isTouchActive = false);
+    });
+  }
+
+  void _triggerTapRipple(Offset pos) {
+    _rippleTimer?.cancel();
+    setState(() {
+      _tapRipplePos = pos;
+      _showTapRipple = true;
+    });
+    _rippleTimer = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) setState(() => _showTapRipple = false);
+    });
+  }
+
   @override
   void dispose() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _stopStream();
     _textFocusNode.dispose();
     _textController.dispose();
+    _touchHideTimer?.cancel();
+    _rippleTimer?.cancel();
     super.dispose();
   }
 
@@ -651,12 +687,18 @@ class _ScreenViewScreenState extends ConsumerState<ScreenViewScreen> {
                   btn = 'middle';
                 }
                 _sendMouseRawButton(event.localPosition, size, 'down', btn);
+              } else {
+                // Touch down — show cursor
+                _showTouchAt(event.localPosition);
               }
             },
             onPointerMove: (event) {
               _lastPointerKind = event.kind;
               if (event.kind == PointerDeviceKind.mouse) {
                 _sendMouseRaw(event.localPosition, size, 'move');
+              } else {
+                // Touch move — update cursor position
+                _showTouchAt(event.localPosition);
               }
             },
             onPointerHover: (event) {
@@ -676,6 +718,14 @@ class _ScreenViewScreenState extends ConsumerState<ScreenViewScreen> {
                   btn = 'middle';
                 }
                 _sendMouseRawButton(event.localPosition, size, 'up', btn);
+              } else {
+                // Touch up — hide cursor
+                _hideTouchCursor();
+              }
+            },
+            onPointerCancel: (event) {
+              if (event.kind != PointerDeviceKind.mouse) {
+                _hideTouchCursor();
               }
             },
             onPointerSignal: (event) {
@@ -695,30 +745,35 @@ class _ScreenViewScreenState extends ConsumerState<ScreenViewScreen> {
             child: GestureDetector(
               onTapDown: (d) {
                 if (_lastPointerKind != PointerDeviceKind.mouse) {
+                  _triggerTapRipple(d.localPosition);
                   _sendMouse(d.localPosition, size, 'click');
                 }
               },
               onDoubleTapDown: (d) {
                 if (_lastPointerKind != PointerDeviceKind.mouse) {
+                  _triggerTapRipple(d.localPosition);
                   _sendMouse(d.localPosition, size, 'dblclick');
                 }
               },
               onLongPressStart: (d) {
                 if (_lastPointerKind != PointerDeviceKind.mouse) {
+                  _triggerTapRipple(d.localPosition);
                   _sendMouse(d.localPosition, size, 'rclick');
                 }
               },
               onScaleStart: (d) {
                 if (_lastPointerKind != PointerDeviceKind.mouse) {
                   _lastDragPosition = d.localFocalPoint;
+                  _showTouchAt(d.localFocalPoint);
                   _sendMouseRaw(d.localFocalPoint, size, 'down');
                 }
               },
               onScaleUpdate: (d) {
                 if (_lastPointerKind != PointerDeviceKind.mouse) {
                   if (d.pointerCount == 1) {
-                     _sendMouseRaw(d.localFocalPoint, size, 'move');
-                     _lastDragPosition = d.localFocalPoint;
+                    _showTouchAt(d.localFocalPoint);
+                    _sendMouseRaw(d.localFocalPoint, size, 'move');
+                    _lastDragPosition = d.localFocalPoint;
                   } else if (d.pointerCount == 2) {
                     final socket = ref.read(socketServiceProvider);
                     socket.sendMouseEvent({
@@ -737,36 +792,101 @@ class _ScreenViewScreenState extends ConsumerState<ScreenViewScreen> {
                     _sendMouseRaw(_lastDragPosition!, size, 'up');
                   }
                   _lastDragPosition = null;
+                  _hideTouchCursor();
                 }
               },
-              child: Container(
-                color: Colors.black,
-                child: Center(
-                  child: _frameBytes == null
-                      ? Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const CircularProgressIndicator(color: AppTheme.primary),
-                            const SizedBox(height: 16),
-                            Text(
-                              _isStreaming ? 'Waiting for frames...' : 'Press play to start',
-                              style: const TextStyle(color: AppTheme.textSecondary),
+              child: Stack(
+                children: [
+                  // Screen content
+                  Container(
+                    color: Colors.black,
+                    child: Center(
+                      child: _frameBytes == null
+                          ? Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const CircularProgressIndicator(color: AppTheme.primary),
+                                const SizedBox(height: 16),
+                                Text(
+                                  _isStreaming ? 'Waiting for frames...' : 'Press play to start',
+                                  style: const TextStyle(color: AppTheme.textSecondary),
+                                ),
+                              ],
+                            )
+                          : Image.memory(
+                              _frameBytes!,
+                              fit: BoxFit.contain,
+                              width: size.width,
+                              height: size.height,
+                              gaplessPlayback: true,
                             ),
-                          ],
-                        )
-                      : Image.memory(
-                          _frameBytes!,
-                          fit: BoxFit.contain,
-                          width: size.width,
-                          height: size.height,
-                          gaplessPlayback: true,
-                        ),
-                ),
+                    ),
+                  ),
+                  // Touch cursor overlay
+                  if (_touchCursorPos != null)
+                    _buildTouchCursorOverlay(),
+                ],
               ),
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildTouchCursorOverlay() {
+    final pos = _touchCursorPos!;
+    const cursorSize = 28.0;
+    const rippleSize = 56.0;
+
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: Stack(
+          children: [
+            // Moving cursor dot
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 16),
+              left: pos.dx - cursorSize / 2,
+              top: pos.dy - cursorSize / 2,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 120),
+                opacity: _isTouchActive ? 1.0 : 0.0,
+                child: Container(
+                  width: cursorSize,
+                  height: cursorSize,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.25),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.9),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primary.withOpacity(0.6),
+                        blurRadius: 12,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.mouse_rounded,
+                    color: Colors.white,
+                    size: 14,
+                  ),
+                ),
+              ),
+            ),
+            // Tap ripple
+            if (_showTapRipple && _tapRipplePos != null)
+              Positioned(
+                left: _tapRipplePos!.dx - rippleSize / 2,
+                top: _tapRipplePos!.dy - rippleSize / 2,
+                child: _TapRipple(size: rippleSize),
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1373,5 +1493,69 @@ class _ScreenViewScreenState extends ConsumerState<ScreenViewScreen> {
       'monitorIndex': _monitorIndex,
       'coexistMode': _coexistMode,
     });
+  }
+}
+
+/// Animated tap ripple indicator — expands and fades on tap/click
+class _TapRipple extends StatefulWidget {
+  final double size;
+  const _TapRipple({required this.size});
+
+  @override
+  State<_TapRipple> createState() => _TapRippleState();
+}
+
+class _TapRippleState extends State<_TapRipple> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scaleAnim;
+  late final Animation<double> _opacityAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 450),
+    );
+    _scaleAnim = Tween<double>(begin: 0.2, end: 1.0).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
+    );
+    _opacityAnim = Tween<double>(begin: 0.85, end: 0.0).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
+    );
+    _ctrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) {
+        return Opacity(
+          opacity: _opacityAnim.value,
+          child: Transform.scale(
+            scale: _scaleAnim.value,
+            child: Container(
+              width: widget.size,
+              height: widget.size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppTheme.primary.withOpacity(0.9),
+                  width: 2.5,
+                ),
+                color: AppTheme.primary.withOpacity(0.15),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }

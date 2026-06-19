@@ -39,7 +39,7 @@ Future<void> main() async {
   final storageService = StorageService(prefs);
 
   // Initialize local notifications
-  const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+  const androidSettings = AndroidInitializationSettings('@mipmap/launcher_icon');
   const initSettings = InitializationSettings(android: androidSettings);
   await notificationsPlugin.initialize(initSettings);
 

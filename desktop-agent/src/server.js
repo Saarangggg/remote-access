@@ -56,8 +56,11 @@ app.get('/health', (req, res) => {
 // ─── Socket.IO ────────────────────────────────────────────────────────────────
 const io = new Server(httpServer, {
   cors: { origin: '*', methods: ['GET', 'POST'] },
-  maxHttpBufferSize: 10 * 1024 * 1024, // 10MB for file chunks
+  maxHttpBufferSize: 1e8, // 100MB for large file transfers
   transports: ['websocket', 'polling'],
+  pingTimeout: 60000, // 60 seconds (prevents ping timeout under screen share load)
+  pingInterval: 25000, // 25 seconds ping interval
+  connectTimeout: 45000, // 45 seconds connection timeout
 });
 
 // Auth middleware for all socket connections
