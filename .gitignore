@@ -1,0 +1,36 @@
+# Dependency directories
+node_modules/
+desktop-agent/node_modules/
+
+# Environment files
+.env
+desktop-agent/.env
+
+# Local build artifacts and caches
+build/
+mobile-app/build/
+.dart_tool/
+mobile-app/.dart_tool/
+.gradle/
+mobile-app/android/.gradle/
+
+# Generated plugins files
+.flutter-plugins
+.flutter-plugins-dependencies
+mobile-app/.flutter-plugins
+mobile-app/.flutter-plugins-dependencies
+
+# Executables and bin outputs
+*.exe
+desktop-agent/src/input/*.exe
+
+# IDE/OS files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
