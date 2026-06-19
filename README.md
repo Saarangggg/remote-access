@@ -99,6 +99,9 @@ remote/
 
 ## Mobile App Setup (Flutter Client) 📱
 
+### Quick Download
+- **Pre-compiled APK**: Download the latest release directly from [sarang-space.site/remote](https://sarang-space.site/remote)
+
 ### Prerequisites
 - Flutter SDK (>= 3.0.0)
 - Android SDK / Device (USB Debugging enabled)
