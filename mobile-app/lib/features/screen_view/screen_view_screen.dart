@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
@@ -69,6 +70,11 @@ class _ScreenViewScreenState extends ConsumerState<ScreenViewScreen> {
       if (mounted) {
         setState(() {
           _displays = displays;
+          if (_displays.isNotEmpty && _monitorIndex < _displays.length) {
+            final disp = _displays[_monitorIndex];
+            _remoteWidth = (disp['width'] as num?)?.toDouble() ?? 1920;
+            _remoteHeight = (disp['height'] as num?)?.toDouble() ?? 1080;
+          }
         });
       }
     } catch (e) {
@@ -153,11 +159,35 @@ class _ScreenViewScreenState extends ConsumerState<ScreenViewScreen> {
 
   // Map touch position to desktop coordinates
   Map<String, dynamic> _touchToDesktop(Offset local, Size widgetSize) {
-    final scaleX = _remoteWidth / widgetSize.width;
-    final scaleY = _remoteHeight / widgetSize.height;
+    final rw = _remoteWidth;
+    final rh = _remoteHeight;
+    final lw = widgetSize.width;
+    final lh = widgetSize.height;
+
+    if (rw <= 0 || rh <= 0 || lw <= 0 || lh <= 0) {
+      return {'x': 0, 'y': 0};
+    }
+
+    final scale = (lw / rw < lh / rh) ? (lw / rw) : (lh / rh);
+    final iw = rw * scale;
+    final ih = rh * scale;
+
+    final dx = (lw - iw) / 2.0;
+    final dy = (lh - ih) / 2.0;
+
+    double touchX = local.dx - dx;
+    double touchY = local.dy - dy;
+
+    // Clamp coordinates to image boundaries
+    touchX = touchX.clamp(0.0, iw);
+    touchY = touchY.clamp(0.0, ih);
+
+    final rx = (touchX / iw) * rw;
+    final ry = (touchY / ih) * rh;
+
     return {
-      'x': (local.dx * scaleX).round(),
-      'y': (local.dy * scaleY).round(),
+      'x': rx.round(),
+      'y': ry.round(),
     };
   }
 
@@ -410,6 +440,7 @@ class _ScreenViewScreenState extends ConsumerState<ScreenViewScreen> {
 
   @override
   void dispose() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _stopStream();
     _textFocusNode.dispose();
     _textController.dispose();
@@ -420,6 +451,17 @@ class _ScreenViewScreenState extends ConsumerState<ScreenViewScreen> {
   Widget build(BuildContext context) {
     final connection = ref.watch(connectionProvider);
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+
+    // Handle status bar and navigation bar overlays in landscape dynamically
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        if (isLandscape) {
+          SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+        } else {
+          SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+        }
+      }
+    });
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -453,6 +495,11 @@ class _ScreenViewScreenState extends ConsumerState<ScreenViewScreen> {
             onSelected: (idx) {
               setState(() {
                 _monitorIndex = idx;
+                if (_displays.isNotEmpty && idx < _displays.length) {
+                  final disp = _displays[idx];
+                  _remoteWidth = (disp['width'] as num?)?.toDouble() ?? 1920;
+                  _remoteHeight = (disp['height'] as num?)?.toDouble() ?? 1080;
+                }
               });
               _stopStream();
               _startStream();
@@ -1178,6 +1225,11 @@ class _ScreenViewScreenState extends ConsumerState<ScreenViewScreen> {
                           final nextIndex = (_monitorIndex + 1) % totalMonitors;
                           setState(() {
                             _monitorIndex = nextIndex;
+                            if (_displays.isNotEmpty && nextIndex < _displays.length) {
+                              final disp = _displays[nextIndex];
+                              _remoteWidth = (disp['width'] as num?)?.toDouble() ?? 1920;
+                              _remoteHeight = (disp['height'] as num?)?.toDouble() ?? 1080;
+                            }
                           });
                           _stopStream();
                           _startStream();

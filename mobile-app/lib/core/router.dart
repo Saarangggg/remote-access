@@ -93,14 +93,19 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final isScreenRoute = _currentIndex == 1; // '/screen' is index 1
+
     return Scaffold(
       body: widget.child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: _onDestinationSelected,
-        destinations: _navItems,
-        animationDuration: const Duration(milliseconds: 300),
-      ),
+      bottomNavigationBar: (isLandscape && isScreenRoute)
+          ? null
+          : NavigationBar(
+              selectedIndex: _currentIndex,
+              onDestinationSelected: _onDestinationSelected,
+              destinations: _navItems,
+              animationDuration: const Duration(milliseconds: 300),
+            ),
     );
   }
 }
