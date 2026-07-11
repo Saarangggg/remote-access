@@ -151,3 +151,10 @@ To work on Monitor 2 from your mobile client while someone else uses Monitor 1 l
 ## License 📄
 
 This project is licensed under the terms of the [MIT License](LICENSE).
+
+
+
+## Profile
+
+- GitHub: https://github.com/Saarangggg
+- Instagram: https://instagram.com/5araang
